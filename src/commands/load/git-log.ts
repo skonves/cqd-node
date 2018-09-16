@@ -26,6 +26,6 @@ export function gitLog(path: string, options?: GitParserOptions): Readable {
 
   return spawn(`bash`, [
     '-c',
-    `git --git-dir=${path} log --pretty=format:'[%h] %an %ad %s' --date=short --numstat${optionsString}`,
+    `git --git-dir=${path} log --pretty=format:'[%h] %an %ad %s' --date=iso --numstat${optionsString}`,
   ]).stdout;
 }
