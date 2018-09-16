@@ -1,10 +1,15 @@
 import { create, validators } from 'posix-argv-parser';
+import * as path from 'path';
+
 import { SqliteWriter } from './sql-writer';
 import { gitLog, GitParserOptions } from './git-log';
 import { GitParser } from './git-parser';
 import { Database } from 'sqlite3';
 import { LineStatsReader } from './line-info-reader';
 import { isDate } from 'util';
+
+import { open as openDatabase } from '../../db';
+import { addGitDir } from '../../utils';
 
 const args = create();
 
@@ -55,17 +60,13 @@ export function run() {
     if (errors) {
       console.error(errors);
     } else {
-      const rawGitPath: string = options['gitPath'].isSet
-        ? options['gitPath'].value
-        : `${process.cwd()}/.git`;
+      const rawGitPath: string = addGitDir(
+        options['gitPath'].isSet ? options['gitPath'].value : process.cwd(),
+      );
 
-      const relativeGitPath = rawGitPath.endsWith('/.git')
+      const gitPath = rawGitPath.startsWith(path.sep)
         ? rawGitPath
-        : `${rawGitPath}${rawGitPath.endsWith('/') ? '' : '/'}.git`;
-
-      const gitPath = relativeGitPath.startsWith('.')
-        ? `${process.cwd()}/${relativeGitPath}`
-        : relativeGitPath;
+        : path.resolve(rawGitPath);
 
       const parserOptions: GitParserOptions = {
         ignoreSpaceChange: true,
@@ -79,26 +80,23 @@ export function run() {
   });
 }
 
-export default function load(gitPath: string, options: GitParserOptions): void {
+export default async function load(
+  gitPath: string,
+  options: GitParserOptions,
+): Promise<void> {
   console.log({ gitPath, options });
 
-  const db = new Database('data.db', async err => {
-    const sqliteWriter = new SqliteWriter(db);
+  const db = await openDatabase(gitPath);
 
-    await sqliteWriter.init();
-
-    gitLog(gitPath, options)
-      .pipe(new GitParser())
-      .pipe(new LineStatsReader(gitPath))
-      //.pipe(new Stringifier())
-      //.pipe(process.stdout)
-      .pipe(sqliteWriter)
-      .on('finish', () => {
-        (process.stdout as any).clearLine();
-        (process.stdout as any).cursorTo(0);
-        console.log('done');
-      });
-  });
+  gitLog(gitPath, options)
+    .pipe(new GitParser())
+    .pipe(new LineStatsReader(gitPath))
+    .pipe(new SqliteWriter(db))
+    .on('finish', () => {
+      (process.stdout as any).clearLine();
+      (process.stdout as any).cursorTo(0);
+      console.log('done');
+    });
 }
 
 function date(opt: { value: string }) {

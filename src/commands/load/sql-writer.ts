@@ -7,31 +7,6 @@ export class SqliteWriter extends Writable {
     super({ objectMode: true });
   }
 
-  async init() {
-    await this.run(
-      'CREATE TABLE IF NOT EXISTS commits (hash VARCHAR(9) PRIMARY KEY, author VARCHAR(100), date DATE, message TEXT);',
-    );
-    await this.run(
-      `CREATE TABLE IF NOT EXISTS files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        hash VARCHAR(9),
-        name VARCHAR(255),
-        additions INTEGER,
-        deletions INTEGER,
-        lines INTEGER,
-        blank_lines INTEGER,
-        total_ind INTEGER,
-        mean_ind REAL,
-        sd_ind REAL,
-        max_ind INTEGER,
-        FOREIGN KEY(hash) REFERENCES commits(hash)
-      );`,
-    );
-    await this.run(
-      'CREATE UNIQUE INDEX IF NOT EXISTS ux_commit_file ON files (hash, name);',
-    );
-  }
-
   _write(
     commit: Commit,
     encoding: string,
