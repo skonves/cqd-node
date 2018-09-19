@@ -1,7 +1,7 @@
 import { Transform, TransformCallback } from 'stream';
 import { LineStats } from './file-parser';
 
-const commitRegex = /^\[([0-9a-f]+)\]\s(.*?)\s([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s-[0-9]{4})\s(.*?)$/;
+const commitRegex = /^\[([0-9a-f]+)\]\s(.*?)\s([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s[-+][0-9]{4})\s(.*?)$/;
 const fileRegex = /^([0-9]+)\s+([0-9]+)\s+(.*?)$/;
 
 export class GitParserStream extends Transform {
