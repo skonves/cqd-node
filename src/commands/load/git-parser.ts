@@ -7,6 +7,7 @@ const fileRegex = /^([0-9]+)\s+([0-9]+)\s+(.*?)$/;
 export class GitParserStream extends Transform {
   constructor() {
     super({ objectMode: true });
+    this.parser = new GitParser();
   }
 
   _transform(
@@ -14,19 +15,35 @@ export class GitParserStream extends Transform {
     encoding: string,
     callback: TransformCallback,
   ): void {
-    const lines = (this.trivia + chunk.toString()).split('\n');
-    this.trivia = '';
+    for (const commit of this.parser.parse(chunk.toString())) {
+      this.push(commit);
+    }
+    callback();
+  }
+
+  private readonly parser: GitParser;
+}
+
+export class GitParser {
+  *parse(str: string): IterableIterator<Commit> {
+    const lines = (this.remainder + str).split('\n');
+    this.remainder = '';
+
+    let index = -1;
 
     for (const line of lines) {
-      if (line[0] === '[') {
-        if (this.currentCommit) {
-          this.doPush();
-        }
+      index++;
+      if (index === lines.length - 1 && !str.endsWith('\n')) {
+        this.remainder = line;
+        continue;
+      } else if (line[0] === '[') {
+        const result = this.doPush();
+        if (result) yield result;
 
         const match = commitRegex.exec(line.trim());
 
         if (!match) {
-          this.trivia = line;
+          this.remainder = line;
           continue;
         } else {
           this.currentCommit = {
@@ -42,7 +59,7 @@ export class GitParserStream extends Transform {
           const match = fileRegex.exec(line.trim());
 
           if (!match) {
-            this.trivia = line;
+            this.remainder = line;
           } else {
             const file = {
               additions: Number(match[1]),
@@ -53,7 +70,7 @@ export class GitParserStream extends Transform {
             this.currentCommit.files.push(file);
           }
         } catch (err) {
-          console.error(line, chunk.toString(), err);
+          console.error(line, str, err);
           process.exit(1);
         }
       } else {
@@ -61,31 +78,30 @@ export class GitParserStream extends Transform {
       }
     }
     if (this.currentCommit && this.currentCommit.files.length) {
-      this.doPush();
+      const result = this.doPush();
+      if (result) yield result;
       this.currentCommit.files = [];
     }
-    callback();
   }
 
-  private doPush() {
+  private doPush(): Commit {
     if (
-      !this.currentCommit.files.length &&
-      this.currentCommit.hash === this.lastPushed
+      !this.currentCommit ||
+      (!this.currentCommit.files.length &&
+        this.currentCommit.hash === this.lastPushed)
     ) {
-      // Don't push an empty commit if we have already pushed files for the same commit
-      return;
+      // Don't return an empty commit if we have already returned files for the same commit
+      return undefined;
     }
-    this.push({ ...this.currentCommit });
-    if (this.currentCommit.files.length) {
-      this.lastPushed = this.currentCommit.hash;
-    } else {
-      this.lastPushed = undefined;
-    }
+    const result = { ...this.currentCommit };
+    this.lastPushed = result.files.length ? result.hash : undefined;
+
+    return result;
   }
 
   private currentCommit: Commit;
-  private trivia: string = '';
   private lastPushed: string;
+  private remainder: string = '';
 }
 
 export type Commit = {
