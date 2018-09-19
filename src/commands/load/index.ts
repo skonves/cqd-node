@@ -3,7 +3,7 @@ import * as path from 'path';
 
 import { SqliteWriter } from './sql-writer';
 import { gitLog, GitParserOptions } from './git-log';
-import { GitParser } from './git-parser';
+import { GitParserStream } from './git-parser';
 import { Database } from 'sqlite3';
 import { LineStatsReader } from './line-info-reader';
 import { isDate } from 'util';
@@ -89,7 +89,7 @@ export default async function load(
   const db = await openDatabase(gitPath);
 
   gitLog(gitPath, options)
-    .pipe(new GitParser())
+    .pipe(new GitParserStream())
     .pipe(new LineStatsReader(gitPath))
     .pipe(new SqliteWriter(db))
     .on('finish', () => {

@@ -4,7 +4,7 @@ import { LineStats } from './file-parser';
 const commitRegex = /^\[([0-9a-f]+)\]\s(.*?)\s([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s-[0-9]{4})\s(.*?)$/;
 const fileRegex = /^([0-9]+)\s+([0-9]+)\s+(.*?)$/;
 
-export class GitParser extends Transform {
+export class GitParserStream extends Transform {
   constructor() {
     super({ objectMode: true });
   }
