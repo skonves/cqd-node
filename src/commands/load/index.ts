@@ -5,7 +5,7 @@ import { SqliteWriter } from './sql-writer';
 import { gitLog, GitParserOptions } from './git-log';
 import { GitParserStream } from './git-parser';
 import { Database } from 'sqlite3';
-import { LineStatsReader } from './line-info-reader';
+import { LineStatsReader } from './line-stats-reader';
 import { isDate } from 'util';
 
 import { open as openDatabase } from '../../db';
