@@ -9,7 +9,7 @@ import { LineStatsReader } from './line-stats-reader';
 import { isDate } from 'util';
 
 import { open as openDatabase } from '../../db';
-import { addGitDir } from '../../utils';
+import { addGitDir, removeGitDir } from '../../utils';
 
 const args = create();
 
@@ -86,7 +86,8 @@ export default async function load(
 ): Promise<void> {
   console.log({ gitPath, options });
 
-  const db = await openDatabase(gitPath);
+  const dbLocation = path.join(removeGitDir(gitPath), 'data.db');
+  const db = await openDatabase(dbLocation);
 
   gitLog(gitPath, options)
     .pipe(new GitParserStream())

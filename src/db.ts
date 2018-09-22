@@ -1,13 +1,10 @@
 import { Database } from 'sqlite3';
-import * as path from 'path';
-import { removeGitDir } from './utils';
 
-export async function open(gitPath: string): Promise<Database> {
-  const dbPath = path.join(removeGitDir(gitPath), 'data.db');
-  console.log(`Opening database at ${dbPath}`);
+export async function open(location: string): Promise<Database> {
+  console.log(`Opening database at ${location}`);
 
   return new Promise<Database>((resolve, reject) => {
-    const db = new Database(dbPath, err => (err ? reject(err) : resolve(db)));
+    const db = new Database(location, err => (err ? reject(err) : resolve(db)));
   }).then(init);
 }
 
