@@ -1,6 +1,6 @@
 import { Transform, TransformCallback } from 'stream';
 import { Commit, File } from './git-parser';
-import { FileParser } from './file-parser';
+import { FileParserStream } from './file-parser';
 import { gitShow } from './git-show';
 
 export class LineStatsReader extends Transform {
@@ -30,7 +30,7 @@ export class LineStatsReader extends Transform {
 
   private async getStats(hash: string, file: File): Promise<File> {
     return new Promise<File>(resolve => {
-      const fileParser = new FileParser();
+      const fileParser = new FileParserStream();
 
       gitShow(this.gitPath, hash, file.name)
         .pipe(fileParser)

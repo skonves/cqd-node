@@ -1,6 +1,6 @@
 import { Writable } from 'stream';
 
-export class FileParser extends Writable {
+export class FileParserStream extends Writable {
   _write(chunk: Buffer, encoding: string, callback: () => void): void {
     const lines = chunk.toString().split('\n');
 
