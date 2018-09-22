@@ -1,15 +1,37 @@
 import { Writable } from 'stream';
 
 export class FileParserStream extends Writable {
-  _write(chunk: Buffer, encoding: string, callback: () => void): void {
-    const lines = chunk.toString().split('\n');
+  private readonly fileParser = new FileParser();
 
-    for (const line of lines) {
-      this.lineCount++;
-      if (!line.trim().length) this.blankLineCount++;
-      this.indents.push(line.length - line.trimLeft().length);
-    }
+  _write(chunk: Buffer, encoding: string, callback: () => void): void {
+    this.fileParser.parse(chunk.toString());
     callback();
+  }
+
+  getStats(): LineStats {
+    return this.fileParser.getStats();
+  }
+}
+
+export class FileParser {
+  parse(str: string): void {
+    const lines = (this.remainder + str).split('\n');
+
+    let index = -1;
+    for (const line of lines) {
+      index++;
+
+      if (index === lines.length - 1) {
+        this.remainder = line;
+        continue;
+      }
+
+      const lineContentLength = line.trimLeft().length;
+
+      this.lineCount++;
+      if (!lineContentLength) this.blankLineCount++;
+      this.indents.push(line.length - lineContentLength);
+    }
   }
 
   getStats(): LineStats {
@@ -39,9 +61,10 @@ export class FileParserStream extends Writable {
     };
   }
 
+  private remainder: string = '';
+  private indents: number[] = [];
   private lineCount: number = 0;
   private blankLineCount: number = 0;
-  private indents: number[] = [];
 }
 
 export type LineStats = {
