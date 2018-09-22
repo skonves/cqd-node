@@ -2,7 +2,7 @@ import { Writable } from 'stream';
 import { Database } from 'sqlite3';
 import { Commit, File } from './git-parser';
 
-export class SqliteWriter extends Writable {
+export class SqliteWriterStream extends Writable {
   constructor(private readonly db: Database) {
     super({ objectMode: true });
   }
@@ -18,9 +18,10 @@ export class SqliteWriter extends Writable {
   }
 
   private async doWrite(commit: Commit) {
-    (process.stdout as any).clearLine();
-    (process.stdout as any).cursorTo(0);
-    process.stdout.write(`date: ${commit.date}`);
+    console.log({ commit: commit.hash, date: commit.date });
+    // (process.stdout as any).clearLine();
+    // (process.stdout as any).cursorTo(0);
+    // process.stdout.write(`date: ${commit.date}`);
     await this.run(
       `INSERT OR IGNORE INTO commits (hash, author, date, message) VALUES (?,?,?,?)`,
       [commit.hash, commit.author, commit.date.toISOString(), commit.message],

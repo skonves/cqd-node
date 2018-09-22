@@ -1,7 +1,7 @@
 import { create, validators } from 'posix-argv-parser';
 import * as path from 'path';
 
-import { SqliteWriter } from './sql-writer';
+import { SqliteWriterStream } from './sql-writer';
 import { gitLog, GitParserOptions } from './git-log';
 import { GitParserStream } from './git-parser';
 import { Database } from 'sqlite3';
@@ -92,7 +92,7 @@ export default async function load(
   gitLog(gitPath, options)
     .pipe(new GitParserStream())
     .pipe(new LineStatsReader(gitPath))
-    .pipe(new SqliteWriter(db))
+    .pipe(new SqliteWriterStream(db))
     .on('finish', () => {
       (process.stdout as any).clearLine();
       (process.stdout as any).cursorTo(0);
