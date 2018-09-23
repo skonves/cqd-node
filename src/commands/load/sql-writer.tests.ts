@@ -2,7 +2,7 @@ import { open } from '../../db';
 import { SqliteWriter } from './sql-writer';
 import { Commit } from './git-parser';
 
-describe.only('SqlWriter', () => {
+describe('SqlWriter', () => {
   it('works', async () => {
     // ARRANGE
 
@@ -62,7 +62,9 @@ describe.only('SqlWriter', () => {
     // ASSERT
     console.log(await sqlWriter.all('SELECT * FROM commits'));
     console.log(await sqlWriter.all('SELECT * FROM files'));
-    console.log(await sqlWriter.all('SELECT *, date(from_date) f FROM file_names'));
+    console.log(
+      await sqlWriter.all('SELECT *, date(from_date) f FROM file_names'),
+    );
     console.log(await sqlWriter.all('SELECT * FROM changes'));
   });
 });
