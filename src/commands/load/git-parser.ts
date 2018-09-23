@@ -115,6 +115,7 @@ export type Commit = {
 export type File = {
   additions: number;
   deletions: number;
+  previousName?: string;
   name: string;
   stats?: LineStats;
 };

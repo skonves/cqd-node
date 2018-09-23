@@ -1,87 +1,113 @@
 import { Writable } from 'stream';
 import { Database } from 'sqlite3';
 import { Commit, File } from './git-parser';
+import { DbBase } from '../../db';
 
 export class SqliteWriterStream extends Writable {
-  constructor(private readonly db: Database) {
+  constructor(db: Database) {
     super({ objectMode: true });
+    this.sqliteWriter = new SqliteWriter(db);
   }
+
+  private readonly sqliteWriter: SqliteWriter;
 
   _write(
     commit: Commit,
     encoding: string,
     callback: (error?: Error | null) => void,
   ): void {
-    this.doWrite(commit)
+    this.sqliteWriter
+      .writeCommit(commit)
       .then(() => callback())
       .catch(err => console.error('ERR => ', err));
   }
+}
 
-  private async doWrite(commit: Commit) {
-    console.log({ commit: commit.hash, date: commit.date });
-    // (process.stdout as any).clearLine();
-    // (process.stdout as any).cursorTo(0);
-    // process.stdout.write(`date: ${commit.date}`);
+export class SqliteWriter extends DbBase {
+  constructor(db: Database) {
+    super(db);
+  }
+
+  async writeCommit(commit: Commit): Promise<void> {
     await this.run(
       `INSERT OR IGNORE INTO commits (hash, author, date, message) VALUES (?,?,?,?)`,
       [commit.hash, commit.author, commit.date.toISOString(), commit.message],
     );
 
-    this.commitsWritten += 1;
-
-    if (commit.files.length) {
-      await this.writeFiles(commit.hash, commit.files);
+    for (const file of commit.files) {
+      await this.writeFile(commit.hash, commit.date, file);
     }
+
+    if (this.lastHash !== commit.hash) this.commitsWritten++;
   }
 
-  private async writeFiles(hash: string, files: File[]): Promise<void> {
-    const fileFieldCount = 10;
-    const maxParamsPerQuery = 999;
-    const batchCount = Math.ceil(
-      (files.length * fileFieldCount) / maxParamsPerQuery,
+  async writeFile(hash: string, date: Date, file: File): Promise<void> {
+    const fileName = await this.get(
+      'SELECT n.* FROM file_names n JOIN files f ON n.file_id = f.id WHERE (n.name = ? OR n.name = ?) AND n.from_date <= ? AND (n.to_date IS NULL OR n.to_date > ?) LIMIT 1',
+      [file.previousName || file.name, file.name, date, date],
     );
 
-    const filesPerBatch = Math.ceil(files.length / batchCount);
+    let fileId: number;
+    let fileNameId: number;
+    let change: string;
 
-    await Promise.all(
-      [...Array(batchCount).keys()]
-        .map((_, i) => files.slice(i * filesPerBatch, (i + 1) * filesPerBatch))
-        .map(async batchFiles => {
-          const stmt = `INSERT OR IGNORE INTO files (hash, name, additions, deletions, lines, blank_lines, total_ind, mean_ind, sd_ind, max_ind) VALUES ${batchFiles
-            .map(() => '(?,?,?,?,?,?,?,?,?,?)')
-            .join(',')}`;
+    if (fileName) {
+      fileId = fileName.file_id;
+      fileNameId = fileName.id;
+      change = 'U';
 
-          await this.run(
-            stmt,
-            batchFiles
-              .map(file => [
-                hash,
-                file.name,
-                file.additions,
-                file.deletions,
-                file.stats ? file.stats.lineCount : 0,
-                file.stats ? file.stats.blankLineCount : 0,
-                file.stats ? file.stats.total : 0,
-                file.stats ? file.stats.mean : 0,
-                file.stats ? file.stats.sd : 0,
-                file.stats ? file.stats.max : 0,
-              ])
-              .reduce((a, b) => a.concat(b), []),
-          );
+      if (fileName.name === file.previousName && fileName.name !== file.name) {
+        await this.run('UPDATE file_names SET to_date = ? WHERE id = ?', [
+          date,
+          fileNameId,
+        ]);
+        fileNameId = (await this.run(
+          'INSERT INTO file_names (file_id, name, from_date) VALUES (?,?,?)',
+          [fileId, file.name, date],
+        )).lastID;
+        change = 'R';
+      }
+    } else {
+      fileId = (await this.run('INSERT INTO files (deleted) VALUES (?)', [
+        false,
+      ])).lastID;
 
-          this.filesWritten += batchFiles.length;
-        }),
+      fileNameId = (await this.run(
+        'INSERT INTO file_names (file_id, name, from_date) VALUES (?,?,?)',
+        [fileId, file.name, date],
+      )).lastID;
+      change = 'A';
+    }
+
+    await this.run(
+      'UPDATE changes SET until_hash = ? WHERE hash <> ? AND until_hash IS NULL AND file_id = ?',
+      [hash, hash, fileId],
+    );
+
+    await this.run(
+      `
+      INSERT OR IGNORE INTO changes (
+        hash, file_id, file_name_id, change,
+        additions, deletions, lines, blank_lines, total_ind, mean_ind, sd_ind, max_ind)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    `,
+      [
+        hash,
+        fileId,
+        fileNameId,
+        change,
+        file.additions,
+        file.deletions,
+        file.stats ? file.stats.lineCount : 0,
+        file.stats ? file.stats.blankLineCount : 0,
+        file.stats ? file.stats.total : 0,
+        file.stats ? file.stats.mean : 0,
+        file.stats ? file.stats.sd : 0,
+        file.stats ? file.stats.max : 0,
+      ],
     );
   }
 
-  private filesWritten: number = 0;
   private commitsWritten: number = 0;
-
-  private run(sql: string): Promise<void>;
-  private run(sql: string, params: any);
-  private run(sql: string, params?: any): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, params, err => (err ? reject(err) : resolve()));
-    });
-  }
+  private lastHash: string = '';
 }
