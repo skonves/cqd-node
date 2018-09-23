@@ -28,7 +28,11 @@ export class LineStatsReader extends Transform {
   }
 
   private async getStats(hash: string, file: File): Promise<File> {
-    const stats = await getLineStats(this.gitPath, hash, file.name);
-    return { ...file, stats };
+    try {
+      const stats = await getLineStats(this.gitPath, hash, file.name);
+      return { ...file, stats };
+    } catch {
+      return { ...file, deleted: true };
+    }
   }
 }

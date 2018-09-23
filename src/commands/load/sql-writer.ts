@@ -95,7 +95,7 @@ export class SqliteWriter extends DbBase {
         hash,
         fileId,
         fileNameId,
-        change,
+        file.stats ? change : 'D',
         file.additions,
         file.deletions,
         file.stats ? file.stats.lineCount : 0,

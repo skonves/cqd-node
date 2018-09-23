@@ -134,5 +134,6 @@ export type File = {
   deletions: number;
   previousName?: string;
   name: string;
+  deleted?: boolean;
   stats?: LineStats;
 };

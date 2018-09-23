@@ -6,14 +6,18 @@ export async function getLineStats(
   hash: string,
   fileName: string,
 ): Promise<LineStats> {
-  return new Promise<LineStats>((resolve, reject) => {
+  return new Promise<LineStats>(async (resolve, reject) => {
     const fileParserStream = new FileParserStream();
 
-    gitShow(gitPath, hash, fileName)
-      .pipe(fileParserStream)
-      .on('finish', () => {
-        resolve(fileParserStream.getStats());
-      })
-      .on('error', err => reject(err));
+    try {
+      (await gitShow(gitPath, hash, fileName))
+        .pipe(fileParserStream)
+        .on('finish', () => {
+          resolve(fileParserStream.getStats());
+        })
+        .on('error', err => reject(err));
+    } catch (err) {
+      reject(err);
+    }
   });
 }

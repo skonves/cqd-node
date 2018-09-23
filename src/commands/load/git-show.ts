@@ -5,9 +5,22 @@ export function gitShow(
   path: string,
   hash: string,
   fileName: string,
-): Readable {
-  return spawn(`bash`, [
-    '-c',
-    `git --git-dir=${path} show ${hash}:"${fileName}"`,
-  ]).stdout;
+): Promise<Readable> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(`bash`, [
+      '-c',
+      `git --git-dir=${path} show ${hash}:"${fileName}"`,
+    ]);
+
+    let rejected = false;
+
+    proc.stderr.on('data', err => {
+      rejected = true;
+      reject(err);
+    });
+
+    proc.stderr.on('end', () => {
+      if (!rejected) resolve(proc.stdout);
+    });
+  });
 }
