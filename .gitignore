@@ -64,3 +64,5 @@ typings/
 
 # Build output
 lib/
+
+data.db
