@@ -29,6 +29,7 @@ export class SqliteWriter extends DbBase {
   }
 
   async writeCommit(commit: Commit): Promise<void> {
+    console.log({ hash: commit.hash, date: commit.date });
     await this.run(
       `INSERT OR IGNORE INTO commits (hash, author, date, message) VALUES (?,?,?,?)`,
       [commit.hash, commit.author, commit.date.toISOString(), commit.message],

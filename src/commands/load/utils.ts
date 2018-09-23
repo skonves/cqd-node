@@ -1,5 +1,5 @@
 import { LineStats, FileParserStream } from './file-parser';
-import { gitShow } from './git-show';
+import { gitShow, isDeleted } from './git-show';
 
 export async function getLineStats(
   gitPath: string,
@@ -13,7 +13,15 @@ export async function getLineStats(
       (await gitShow(gitPath, hash, fileName))
         .pipe(fileParserStream)
         .on('finish', () => {
-          resolve(fileParserStream.getStats());
+          const stats = fileParserStream.getStats();
+
+          if (stats.lineCount === 0) {
+            isDeleted(gitPath, hash, fileName).then(
+              value => (value ? reject('file is deleted') : resolve(stats)),
+            );
+          } else {
+            resolve(fileParserStream.getStats());
+          }
         })
         .on('error', err => reject(err));
     } catch (err) {

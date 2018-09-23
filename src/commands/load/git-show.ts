@@ -5,22 +5,33 @@ export function gitShow(
   path: string,
   hash: string,
   fileName: string,
-): Promise<Readable> {
-  return new Promise((resolve, reject) => {
+): Readable {
+  return spawn(`bash`, [
+    '-c',
+    `git --git-dir=${path} show ${hash}:"${fileName}"`,
+  ]).stdout;
+}
+
+export async function isDeleted(
+  path: string,
+  hash: string,
+  fileName: string,
+): Promise<boolean> {
+  return new Promise<boolean>(resolve => {
     const proc = spawn(`bash`, [
       '-c',
-      `git --git-dir=${path} show ${hash}:"${fileName}"`,
+      `git --git-dir=${path} log ${hash} -1 --name-status --format=%h  -- "${fileName}"`,
     ]);
 
-    let rejected = false;
+    let str: string = '';
 
-    proc.stderr.on('data', err => {
-      rejected = true;
-      reject(err);
+    proc.stdout.on('data', m => {
+      str += m.toString();
     });
 
-    proc.stderr.on('end', () => {
-      if (!rejected) resolve(proc.stdout);
+    proc.stdout.on('close', m => {
+      const win = str === `${hash}\n\nD\t${fileName}\n`;
+      resolve(win);
     });
   });
 }
