@@ -3,6 +3,7 @@ import { LineStats } from './file-parser';
 
 const commitRegex = /^\[([0-9a-f]+)\]\s(.*?)\s([0-9]{4}-[0-9]{2}-[0-9]{2}\s[0-9]{2}:[0-9]{2}:[0-9]{2}\s[-+][0-9]{4})\s(.*?)$/;
 const fileRegex = /^([0-9]+)\s+([0-9]+)\s+(.*?)$/;
+const renameRegex = /^(.*?){(.*?)\s=>\s(.*?)}(.*?)$/;
 
 export class GitParserStream extends Transform {
   constructor() {
@@ -61,10 +62,26 @@ export class GitParser {
           if (!match) {
             this.remainder = line;
           } else {
+            const renameMatch = renameRegex.exec(match[3]);
+            const spl = match[3].split(' => ');
+
+            const previousName = renameMatch
+              ? `${renameMatch[1]}${renameMatch[2]}${renameMatch[4]}`
+              : spl.length === 2
+                ? spl[0]
+                : undefined;
+
+            const name = renameMatch
+              ? `${renameMatch[1]}${renameMatch[3]}${renameMatch[4]}`
+              : spl.length === 2
+                ? spl[1]
+                : match[3];
+
             const file = {
               additions: Number(match[1]),
               deletions: Number(match[2]),
-              name: match[3],
+              previousName,
+              name,
             };
 
             this.currentCommit.files.push(file);
