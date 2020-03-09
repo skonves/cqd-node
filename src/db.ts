@@ -58,7 +58,9 @@ async function init(db: Database): Promise<Database> {
     `CREATE TABLE IF NOT EXISTS changes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       hash VARCHAR(9) NOT NULL,
+      date DATE NOT NULL,
       until_hash VARCHAR(9) NULL,
+      until_date DATE NULL,
       file_id INTEGER NOT NULL,
       file_name_id INTEGER NOT NULL,
       change TEXT(1) NOT NULL,
@@ -85,6 +87,14 @@ async function init(db: Database): Promise<Database> {
   await run(
     db,
     'CREATE UNIQUE INDEX IF NOT EXISTS ux_changes_until_hash_file_id ON changes (hash, until_hash, file_id);',
+  );
+  await run(
+    db,
+    'CREATE INDEX IF NOT EXISTS ux_changes_date ON changes(date);',
+  );
+  await run(
+    db,
+    'CREATE INDEX IF NOT EXISTS ux_changes_until_date ON changes(until_date);',
   );
 
   return db;

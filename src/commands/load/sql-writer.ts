@@ -32,7 +32,7 @@ export class SqliteWriter extends DbBase {
     console.log({ hash: commit.hash, date: commit.date });
     await this.run(
       `INSERT OR IGNORE INTO commits (hash, author, date, message) VALUES (?,?,?,?)`,
-      [commit.hash, commit.author, commit.date.toISOString(), commit.message],
+      [commit.hash, commit.author, commit.date, commit.message],
     );
 
     for (const file of commit.files) {
@@ -81,19 +81,20 @@ export class SqliteWriter extends DbBase {
     }
 
     await this.run(
-      'UPDATE changes SET until_hash = ? WHERE hash <> ? AND until_hash IS NULL AND file_id = ?',
-      [hash, hash, fileId],
+      'UPDATE changes SET until_hash = ?, until_date = ? WHERE hash <> ? AND until_hash IS NULL AND file_id = ?',
+      [hash, date, hash, fileId],
     );
 
     await this.run(
       `
       INSERT OR IGNORE INTO changes (
-        hash, file_id, file_name_id, change,
+        hash, date, file_id, file_name_id, change,
         additions, deletions, lines, blank_lines, total_ind, mean_ind, sd_ind, max_ind)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
     `,
       [
         hash,
+        date,
         fileId,
         fileNameId,
         file.stats ? change : 'D',
